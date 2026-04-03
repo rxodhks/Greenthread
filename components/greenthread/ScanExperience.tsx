@@ -51,17 +51,12 @@ export function ScanExperience() {
       const data = (await res.json()) as ScanApiResponse;
       if (!data.ok) {
         setError(data.error);
-        trackClientEvent("scan_error", { category: cat, error: data.error });
         return;
       }
       setResult(data.scenario);
       setSource(data.source);
       setVisionNote(data.visionNote ?? null);
-      trackClientEvent("scan_success", {
-        category: cat,
-        scenarioId: data.scenario.id,
-        source: data.source,
-      });
+      /* scan_success / API scan_error 는 서버 POST /api/scan 에서 기록(차단기가 /api/telemetry 만 막아도 집계됨) */
       window.dispatchEvent(new CustomEvent("gt-scan-complete"));
     } catch {
       setError("네트워크 오류가 발생했습니다.");

@@ -8,6 +8,7 @@ import {
 } from "@/lib/mockScan";
 import { classifyScanImage } from "@/lib/openaiVision";
 import { rateLimitOrThrow } from "@/lib/rateLimit";
+import { recordTelemetry } from "@/lib/telemetryRecord";
 import { appendScanThreadEvent } from "@/lib/threadEventStore";
 
 export const runtime = "nodejs";
@@ -61,11 +62,27 @@ async function pickScenario(params: {
   }
 }
 
-export async function POST(req: NextRequest) {
+async function telemetrySafe(row: Parameters<typeof recordTelemetry>[0]) {
   try {
-    rateLimitOrThrow(`scan:${clientIp(req)}`, 30, 60_000);
+    await recordTelemetry(row);
+  } catch (e) {
+    console.error("[scan] telemetry", e);
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const ip = clientIp(req);
+
+  try {
+    rateLimitOrThrow(`scan:${ip}`, 30, 60_000);
   } catch (e) {
     if ((e as Error).message === "RATE_LIMIT") {
+      await telemetrySafe({
+        event: "scan_error",
+        props: { error: "rate_limited" },
+        ts: Date.now(),
+        ip,
+      });
       return NextResponse.json(
         { ok: false, error: "요청이 너무 잦습니다. 잠시 후 다시 시도해 주세요." },
         { status: 429 },
@@ -78,11 +95,26 @@ export async function POST(req: NextRequest) {
   try {
     form = await req.formData();
   } catch {
+    await telemetrySafe({
+      event: "scan_error",
+      props: { error: "invalid_form" },
+      ts: Date.now(),
+      ip,
+    });
     return NextResponse.json({ ok: false, error: "잘못된 요청 본문입니다." }, { status: 400 });
   }
 
   const cat = form.get("category");
   if (cat !== "food" && cat !== "transport" && cat !== "shopping") {
+    await telemetrySafe({
+      event: "scan_error",
+      props: {
+        error: "invalid_category",
+        category: typeof cat === "string" ? cat : undefined,
+      },
+      ts: Date.now(),
+      ip,
+    });
     return NextResponse.json({ ok: false, error: "유효한 category가 필요합니다." }, { status: 400 });
   }
   const category = cat as ScanCategory;
@@ -93,6 +125,12 @@ export async function POST(req: NextRequest) {
 
   if (file instanceof File && file.size > 0) {
     if (file.size > MAX_BYTES) {
+      await telemetrySafe({
+        event: "scan_error",
+        props: { category, error: "file_too_large" },
+        ts: Date.now(),
+        ip,
+      });
       return NextResponse.json(
         { ok: false, error: "이미지는 4MB 이하만 업로드할 수 있습니다." },
         { status: 413 },
@@ -100,6 +138,12 @@ export async function POST(req: NextRequest) {
     }
     mimeType = file.type || "image/jpeg";
     if (!mimeType.startsWith("image/")) {
+      await telemetrySafe({
+        event: "scan_error",
+        props: { category, error: "not_image" },
+        ts: Date.now(),
+        ip,
+      });
       return NextResponse.json({ ok: false, error: "이미지 파일만 업로드할 수 있습니다." }, { status: 400 });
     }
     const ab = await file.arrayBuffer();
@@ -123,6 +167,13 @@ export async function POST(req: NextRequest) {
   }
 
   await appendScanThreadEvent({ label: scenario.label, category: scenario.category });
+
+  await telemetrySafe({
+    event: "scan_success",
+    props: { category, scenarioId: scenario.id, source },
+    ts: Date.now(),
+    ip,
+  });
 
   return NextResponse.json({
     ok: true,

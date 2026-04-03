@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimitOrThrow } from "@/lib/rateLimit";
-import { getRedis } from "@/lib/redisClient";
-import { pushTelemetryMemory } from "@/lib/telemetryMemory";
+import { recordTelemetry } from "@/lib/telemetryRecord";
 
 export const runtime = "nodejs";
-
-const TELEMETRY_KEY = "greenthread:telemetry";
-const TELEMETRY_MAX = 5000;
 
 const EVENT_RE = /^[a-z][a-z0-9_]{0,63}$/;
 
@@ -53,16 +49,7 @@ export async function POST(req: NextRequest) {
     ip: clientIp(req),
   };
 
-  const redis = getRedis();
-  if (redis) {
-    await redis.lpush(TELEMETRY_KEY, JSON.stringify(row));
-    await redis.ltrim(TELEMETRY_KEY, 0, TELEMETRY_MAX - 1);
-  } else {
-    pushTelemetryMemory(row);
-    if (process.env.NODE_ENV === "development") {
-      console.info("[telemetry]", row);
-    }
-  }
+  await recordTelemetry(row);
 
   return NextResponse.json({ ok: true });
 }
