@@ -3,7 +3,6 @@ import { ingestClientTelemetry } from "@/lib/telemetryIngest";
 
 export const runtime = "nodejs";
 
-/** @deprecated 브라우저는 `/api/beacon`을 사용. 차단기·레거시 호환용으로 유지. */
 export async function POST(req: NextRequest) {
   return ingestClientTelemetry(req);
 }

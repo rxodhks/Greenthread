@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * 주간 텔레메트리 요약 (로컬/CI에서 실행).
- * 사용: BASE_URL=https://your-app.vercel.app METRICS_ADMIN_SECRET=xxx node scripts/telemetry-weekly.mjs
+ * 사용: BASE_URL=https://your-app.vercel.app METRICS_ADMIN_SECRET=xxx npm run telemetry:week
+ * (주 1회 CI/GitHub Actions 스케줄에 두 변수만 시크릿으로 넣고 동일 명령 실행 가능)
  */
 const base = process.env.BASE_URL?.replace(/\/$/, "");
 const secret = process.env.METRICS_ADMIN_SECRET;

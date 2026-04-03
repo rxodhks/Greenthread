@@ -7,7 +7,7 @@
 **복합 축 (B2C 유지)**: **운영(집계)** + **성장(공유)** 를 같이 밀고, **신뢰(개인정보·AI 고지 페이지)** 를 병행한다.  
 **B2B 분기**는 1순위 사용자 가설이 바뀔 때 별도 스프린트로 잡는다(감사 로그·데모 예약 등).
 
-구현 메모: `/admin/metrics` + `GET /api/admin/metrics`(Bearer `METRICS_ADMIN_SECRET`), 공유 카드 `/share/[id]`, `/privacy`, 주간 JSON 출력 `npm run telemetry:week`(환경 변수 `BASE_URL`, `METRICS_ADMIN_SECRET`).
+구현 메모: `/admin/metrics` + `GET /api/admin/metrics`(Bearer `METRICS_ADMIN_SECRET`), 클라이언트 이벤트 `POST /api/beacon`(레거시 `POST /api/telemetry`), 공유 카드 `/share/[id]`, `/privacy`, 주간 JSON 출력 `npm run telemetry:week`(환경 변수 `BASE_URL`, `METRICS_ADMIN_SECRET`).
 
 ## 다음 스프린트 단일 목표 (선택 확정)
 
@@ -20,7 +20,7 @@
 
 ## 이번 분기 성공 기준 (가설 수치)
 
-- **측정**: 스캔 성공 세션 대비 **CTA(기부 또는 대체 행동) 클릭률 ≥ 15%**를 1차 목표로 두고, `POST /api/telemetry` 이벤트로 집계한다. (실데이터 전까지는 가설)
+- **측정**: 스캔 성공 세션 대비 **CTA(기부 또는 대체 행동) 클릭률 ≥ 15%**를 1차 목표로 두고, `POST /api/beacon`(레거시 `POST /api/telemetry`)·서버 스캔 경로 이벤트로 집계한다. (실데이터 전까지는 가설)
 
 ## 기술 부채·릴리스 메모
 

@@ -56,7 +56,7 @@ export function ScanExperience() {
       setResult(data.scenario);
       setSource(data.source);
       setVisionNote(data.visionNote ?? null);
-      /* scan_success / API scan_error 는 서버 POST /api/scan 에서 기록(차단기가 /api/telemetry 만 막아도 집계됨) */
+      /* scan_success / API scan_error 는 서버 POST /api/scan 에서 기록(클라이언트 비콘 차단과 무관) */
       window.dispatchEvent(new CustomEvent("gt-scan-complete"));
     } catch {
       setError("네트워크 오류가 발생했습니다.");
