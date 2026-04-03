@@ -1,5 +1,6 @@
 import type { ScanCategory } from "@/lib/mockScan";
 import { getRedis } from "@/lib/redisClient";
+import { parseRedisListElementJson } from "@/lib/redisListElementJson";
 
 export type ThreadLiveEvent = {
   id: string;
@@ -9,6 +10,19 @@ export type ThreadLiveEvent = {
   category: ScanCategory;
   at: number;
 };
+
+function isThreadLiveEvent(v: unknown): v is ThreadLiveEvent {
+  if (!v || typeof v !== "object") return false;
+  const o = v as Record<string, unknown>;
+  return (
+    typeof o.id === "string" &&
+    typeof o.lat === "number" &&
+    typeof o.lon === "number" &&
+    typeof o.label === "string" &&
+    (o.category === "food" || o.category === "transport" || o.category === "shopping") &&
+    typeof o.at === "number"
+  );
+}
 
 const MAX = 80;
 const REDIS_KEY = "greenthread:thread-events";
@@ -85,11 +99,8 @@ export async function getThreadEvents(): Promise<ThreadLiveEvent[]> {
     const raw = await redis.lrange(REDIS_KEY, 0, MAX - 1);
     const out: ThreadLiveEvent[] = [];
     for (const s of raw) {
-      try {
-        out.push(JSON.parse(s) as ThreadLiveEvent);
-      } catch {
-        /* skip */
-      }
+      const ev = parseRedisListElementJson(s, isThreadLiveEvent);
+      if (ev) out.push(ev);
     }
     return out;
   }

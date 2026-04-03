@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redisClient";
+import { parseRedisListElementJson } from "@/lib/redisListElementJson";
 import { getTelemetryMemory, type TelemetryRow } from "@/lib/telemetryMemory";
 import { aggregateTelemetry } from "@/lib/telemetryStats";
 
@@ -7,6 +8,10 @@ export const runtime = "nodejs";
 
 const TELEMETRY_KEY = "greenthread:telemetry";
 const TELEMETRY_MAX = 5000;
+
+function isTelemetryRow(v: unknown): v is TelemetryRow {
+  return !!v && typeof v === "object" && typeof (v as { event?: unknown }).event === "string";
+}
 
 function authOk(req: NextRequest): boolean {
   const secret = process.env.METRICS_ADMIN_SECRET?.trim();
@@ -31,12 +36,8 @@ export async function GET(req: NextRequest) {
   if (redis) {
     const raw = await redis.lrange(TELEMETRY_KEY, 0, TELEMETRY_MAX - 1);
     for (const s of raw) {
-      try {
-        const o = JSON.parse(s) as TelemetryRow;
-        if (o && typeof o.event === "string") rows.push(o);
-      } catch {
-        /* skip */
-      }
+      const o = parseRedisListElementJson(s, isTelemetryRow);
+      if (o) rows.push(o);
     }
   } else {
     rows = getTelemetryMemory();
